@@ -2,9 +2,11 @@ import os
 import openai 
 import pyaudio
 import wave
+import pyttsx3
+
 
 # --- Get Audio ---
-# Max seconds of recording:
+# Max recording duration:
 DURACION = 8
 
 # Audio Parameters
@@ -44,6 +46,7 @@ wf.setframerate(fs)
 wf.writeframes(b''.join(frames))
 wf.close()
 
+
 # --- Speech to Text ---
 openai.api_key = os.getenv('OPENAPIKEY')
 
@@ -52,35 +55,57 @@ with open(filename, "rb") as audio_file:
     
 # Parse transcription
 transcription: str = transcription_raw.get("text")
-# print(transcription)
+print(transcription)
 
-# --- Send text to chatgpt and get answer ---
-response_raw = openai.Completion.create(model="text-davinci-003", prompt=transcription, temperature=0.8, max_tokens=100)
+
+# --- Send text to chatgpt and get completion ---
+response_raw = openai.Completion.create(model="text-davinci-003", 
+                                        prompt=transcription, 
+                                        temperature=0.8, 
+                                        max_tokens=90, 
+                                        frequency_penalty=0.5,
+                                        presence_penalty=0.5
+                                        )
 
 '''
 RESPONSE EXAMPLE
 
-<class 'openai.openai_object.OpenAIObject'>
+        <class 'openai.openai_object.OpenAIObject'>
 
-{
-  "choices": [
-    {
-      "finish_reason": "stop",
-      "index": 0,
-      "logprobs": null,
-      "text": "\n\nI'm feeling great, thanks for asking! And yes, it's looking like it will be a good day."
-    }
-  ],
-  "created": 1679455340,
-  "id": "cmpl-6wjLIRoSxuK4wvmEKkGpzqyj01lYH",
-  "model": "text-davinci-003",
-  "object": "text_completion",
-  "usage": {
-    "completion_tokens": 25,
-    "prompt_tokens": 14,
-    "total_tokens": 39
-  }
-}
+        {
+        "choices": [
+            {
+            "finish_reason": "stop",
+            "index": 0,
+            "logprobs": null,
+            "text": "\n\nI'm feeling great, thanks for asking! And yes, it's looking like it will be a good day."
+            }
+        ],
+        "created": 1679455340,
+        "id": "cmpl-6wjLIRoSxuK4wvmEKkGpzqyj01lYH",
+        "model": "text-davinci-003",
+        "object": "text_completion",
+        "usage": {
+            "completion_tokens": 25,
+            "prompt_tokens": 14,
+            "total_tokens": 39
+        }
+        }
 '''
 
-# 
+# Parse response
+response: str = response_raw.get("choices")[0].get("text").strip()
+if not response:
+    raise ValueError("Response from ChatGPT is None or empty string")
+print(response)
+
+# -- Output response: text to speech ---
+engine = pyttsx3.init()
+
+# configure voice rate
+engine.setProperty("rate", 180)
+
+# Speak
+engine.say(response)
+engine.runAndWait()
+engine.stop()
